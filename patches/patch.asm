@@ -10,4 +10,10 @@
     .org GetMovePower
         // Remove the comment below to enable this example
         // b CustomGetMovePower
+
+    .org DungeonTurnCallsite+0 // Fractional turn in DungeonRun
+        bl HookDungeonTurn
+
+    .org InteractWithSecretBazaarNpcCallsite+0
+        bl CustomInteractWithSecretBazaarNpc
 .close

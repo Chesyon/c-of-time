@@ -7,5 +7,6 @@ out.asm
 
 *.nds
 *.nds.skytemple
+*.xdelta
 
 symbols/generated_*.ld

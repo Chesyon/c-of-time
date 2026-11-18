@@ -111,6 +111,8 @@ LIBDIRS	:=
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
+ROM_WITH_RESSOURCES := $(BUILD)/rom_with_ressources.nds
+
 export OUTPUT	:=	$(CURDIR)/$(TARGET)
  
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
@@ -185,8 +187,8 @@ symbols/generated_$(REGION).ld:
 	$(PYTHON) scripts/generate_linkerscript.py $(REGION)
 
 .PHONY: patch
-patch: build
-	$(PYTHON) scripts/patch.py $(REGION) $(ROM) $(OUTPUT).elf $(ROM_OUT)
+patch: build $(ROM_WITH_RESSOURCES)
+	$(PYTHON) scripts/patch.py $(REGION) $(ROM_WITH_RESSOURCES) $(OUTPUT).elf $(ROM_OUT)
 
 .PHONY: asmdump
 asmdump: build
@@ -195,3 +197,35 @@ asmdump: build
 .PHONY: headers
 headers:
 	cd pmdsky-debug/headers && $(PYTHON) augment_headers.py --aliases --deprecate-aliases --docstrings
+
+#---------------------------------------------------------------------------------
+# compile ressources
+# 
+# You need to replace $(ROM) in patch with $(ROM_WITH_RESSOURCES) to make use of this
+#---------------------------------------------------------------------------------
+SCRATCH_ROM_FOLDER := $(BUILD)/rom_ressources
+FS_PATCH_FOLDER := $(BUILD)/fs_patch
+
+DUNSCRIPT_SRC = $(wildcard fs_patch_source/dunscript/*.dunscript) $(wildcard fs_patch_source/dunscript/*/*.dunscript) $(wildcard fs_patch_source/dunscript/*/*/*.dunscript)
+DUNSCRIPT_DEST = $(patsubst fs_patch_source/dunscript/%.dunscript,$(FS_PATCH_FOLDER)/CUSTOM/DNSCRPT/%.dnscrpt,$(DUNSCRIPT_SRC))
+$(FS_PATCH_FOLDER)/CUSTOM/DNSCRPT/%.dnscrpt: fs_patch_source/dunscript/%.dunscript scripts/dungeon_script/assembler.py
+	@mkdir -p $(dir $@)
+	python3 scripts/dungeon_script/assembler.py $< --output $@
+
+
+RESSOURCES_TO_INCLUDE = $(DUNSCRIPT_DEST)
+
+
+$(ROM_WITH_RESSOURCES): $(RESSOURCES_TO_INCLUDE) $(ROM)
+	@rm -rf $(SCRATCH_ROM_FOLDER)
+	@mkdir -p $(SCRATCH_ROM_FOLDER)
+	ndstool -x $(ROM) -9 $(SCRATCH_ROM_FOLDER)/arm9.bin -7 $(SCRATCH_ROM_FOLDER)/arm7.bin -y9 $(SCRATCH_ROM_FOLDER)/y9.bin -y7 $(SCRATCH_ROM_FOLDER)/y7.bin -d $(SCRATCH_ROM_FOLDER)/data -y $(SCRATCH_ROM_FOLDER)/overlay -t $(SCRATCH_ROM_FOLDER)/banner.bin -h $(SCRATCH_ROM_FOLDER)/header.bin
+	@# If all your CUSTOM files are managed via c-of-times, and your rom contain leftover files, you can use the rm command below or some variant of it
+	@# rm -r $(SCRATCH_ROM_FOLDER)/data/CUSTOM
+	@# copy all files in RESSOURCES_TO_INCLUDE in the rom while not including any other files (such as files whose source has been deleted)
+	@for f in $(RESSOURCES_TO_INCLUDE); do \
+		rel=$${f#$(FS_PATCH_FOLDER)/}; \
+		mkdir -p $(SCRATCH_ROM_FOLDER)/data/$$(dirname "$$rel"); \
+		cp --reflink=auto "$$f" "$(SCRATCH_ROM_FOLDER)/data/$$rel"; \
+	done
+	ndstool -c $(ROM_WITH_RESSOURCES) -9 $(SCRATCH_ROM_FOLDER)/arm9.bin -7 $(SCRATCH_ROM_FOLDER)/arm7.bin -y9 $(SCRATCH_ROM_FOLDER)/y9.bin -y7 $(SCRATCH_ROM_FOLDER)/y7.bin -d $(SCRATCH_ROM_FOLDER)/data -y $(SCRATCH_ROM_FOLDER)/overlay -t $(SCRATCH_ROM_FOLDER)/banner.bin -h $(ROM) -r9 0x2000000 -e9 0x2000800 -r7 0x2380000 -e7 0x2380000
