@@ -1,0 +1,6 @@
+walk 1 DOWN
+walk 1 DOWN
+walk 1 DOWN
+displayaction
+setdirection 1 LEFT
+end 0

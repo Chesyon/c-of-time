@@ -1,0 +1,3 @@
+dialoguewait 0 4 "Oh no! A trap! That hurt :("
+setnextfloorflag
+end 1

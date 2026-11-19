@@ -1,0 +1,4 @@
+dialoguewait 255 0 "hello, I’m NPC with behavior 16, on floor 1 of dungeon 0"
+walk 255 RIGHT
+displayaction
+end 1
