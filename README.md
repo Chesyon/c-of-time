@@ -1,3 +1,52 @@
+# Dungeon cutscene via C Of Times
+
+Tooling for adding dungeon cutscene in Pokémon Mystery Dungeon: Explorers of Sky, including a scripting language.
+
+A modified version of tech-ticks patch for Strung Up By Sketches.
+
+The very basic language, dubbed "dunscript", is assembly like. Expect to write your jump and brancheq manually.
+
+The language is documented at ``scripts/dungeon_script/README.md``.
+
+The script needs to be placed under ``fs_patch_source/dunscript/`` folder. The Makefile will compile them and embed them in the output ROM.
+
+See the ``fs_patch_source.example`` folder for examples.
+
+In ``fs_patch_source/dunscript``, there need to be one folder dungeon‑floor pair. First floor (1-indexed) of dungeon 3 (0-indexed) will be ``dun_003_floor_01``. Inside such folder, there can be:
+
+* ``npc/<id, 3 char>.dunscript``: A script that can be run when talking to an NPC in a fixed room. The id correspond to the type column in the pokémon tab of the fixed room root page. Valid numbers are bazaar pokémons, so, 16, 17, 18, 19 and 20. Example name: ``npc/016.dunscript``. Character 255 in the script will reference the pokémon being talked to.
+* ``pos/<x, 3 char>_<y, 3 char>.dunscript``: A script that run when reaching a certain coordinate on the floor. Example: ``pos/001_001.dunscript``. You may want to patch the function that check the coordinate to log them and get the correct value. Only 16 such position are valid per dungeon-floor pair (see ``src/script_hook.c`` to increase them)
+* ``enter.dunscript``: A script that run when entering the floor
+
+## Other technical info
+
+### Makefile
+
+It has been modified to make use of ndstool to extract and repack the rom, and add the modified script files (and compile them). A notable feature, present in the ``$(ROM_WITH_RESSOURCES)`` build script, is that it only copy files whose source still exist without having to clear the cache and recompile every script, so you do not to run ``make clean`` when removing or renaming a script.
+
+It also automatically detect newly added files.
+
+### Adding a new instruction
+
+In ``src/subs_dungeon_script.c``, you will need to add a new opcode number, implement it via a function, and make it is called in the big switch on the opcode.
+
+In ``scripts/dungeon_script/assembler.py``, you will need to add the instruction in the instructions dict (and that’s all for this file)
+
+In ``scripts/dungeon_script/README.md``, add a new documentation entry (if you want documentation. Always a good idea for others who may use it)
+
+### Adding new character id
+
+Want to use command on monster that are neither part of the player team nor the talked to creature?
+
+You can modify ``GetScriptCharacterByIndex`` in ``src/subs_dungeon_script.c`` for that. You will need to filter your target, for example on monster specie as is being already done on monster specie 230 (Girafarig). The last Girafarig to match will be returned (you will certainly want to make sure only a single creature match the filter)
+
+### Listing files
+
+For performance reason, I cache the matching entry in the ``pos`` folder when loading a floor. This require reading files. You may want to look at ``src/script_hook.c`` if you want to do something similar yourself.
+
+
+# Original README below:
+
 # c-of-time
 
 ![c-of-time logo by Irdkwia](./cot-logo.png)
